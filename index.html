@@ -616,9 +616,12 @@
         // Verificar conexão com o Supabase
         async function checkSupabaseConnection() {
             try {
-                const { data, error } = await supabase.from('groups').select('count');
-                
+                // Fazer uma consulta simples para checar conectividade (evita requisições que causem 406)
+                const { data, error, status, statusText } = await supabase.from('groups').select('id').limit(1);
+
                 if (error) {
+                    // Logar detalhes para diagnóstico (inclui status/statusText quando disponível)
+                    console.error('checkSupabaseConnection failed', { error, status, statusText });
                     showConnectionStatus(false, 'Erro de conexão com o banco de dados');
                     throw error;
                 } else {
