@@ -280,17 +280,7 @@
     <div id="connection-status" class="connection-status hidden"></div>
     <button id="logout-btn" class="btn btn-danger hidden" style="position: fixed; top: 10px; right: 10px; z-index:1001;">Sair</button>
 
-    <!-- Modal de confirmação de logout -->
-    <div id="logout-modal" class="modal-backdrop hidden" aria-hidden="true">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
-            <h3 id="logout-modal-title">Confirmar saída</h3>
-            <p>Tem certeza que deseja sair da sua conta?</p>
-            <div class="modal-actions">
-                <button id="logout-cancel-btn" class="btn">Cancelar</button>
-                <button id="logout-confirm-btn" class="btn btn-danger">Sair</button>
-            </div>
-        </div>
-    </div>
+    <!-- Modal será criado dinamicamente quando necessário -->
 
     <!-- Página de Login -->
     <div id="login-page" class="container">
@@ -651,23 +641,9 @@
             document.getElementById('login-btn').addEventListener('click', handleLogin);
             document.getElementById('signup-link').addEventListener('click', handleSignup);
 
-            // Logout
+            // Logout (abre modal dinamicamente)
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) logoutBtn.addEventListener('click', showLogoutModal);
-
-            // Modal buttons
-            const logoutCancel = document.getElementById('logout-cancel-btn');
-            const logoutConfirm = document.getElementById('logout-confirm-btn');
-            if (logoutCancel) logoutCancel.addEventListener('click', hideLogoutModal);
-            if (logoutConfirm) logoutConfirm.addEventListener('click', async () => {
-                hideLogoutModal();
-                await handleLogout();
-            });
-
-            // Close modal with Escape
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') hideLogoutModal();
-            });
             
             // Cadastro do grupo
             document.getElementById('has-headquarters').addEventListener('change', toggleHeadquartersAddress);
@@ -725,24 +701,59 @@
 
         // Mostrar/ocultar modal de logout
         function showLogoutModal() {
-            const modal = document.getElementById('logout-modal');
-            if (!modal) return;
             // Não abrir o modal quando estivermos na página de login
             const loginVisible = !loginPage.classList.contains('hidden');
             if (loginVisible) return;
 
-            modal.classList.remove('hidden');
+            // Criar modal dinamicamente
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'logout-modal';
             modal.setAttribute('aria-hidden', 'false');
-            // Focus no botão de confirmar para acessibilidade
+
+            modal.innerHTML = `
+                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
+                    <h3 id="logout-modal-title">Confirmar saída</h3>
+                    <p>Tem certeza que deseja sair da sua conta?</p>
+                    <div class="modal-actions">
+                        <button id="logout-cancel-btn" class="btn">Cancelar</button>
+                        <button id="logout-confirm-btn" class="btn btn-danger">Sair</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Listeners dos botões
+            const cancelBtn = document.getElementById('logout-cancel-btn');
             const confirmBtn = document.getElementById('logout-confirm-btn');
+            if (cancelBtn) cancelBtn.addEventListener('click', hideLogoutModal);
+            if (confirmBtn) confirmBtn.addEventListener('click', async () => {
+                hideLogoutModal();
+                await handleLogout();
+            });
+
+            // Fechar com Escape
+            const escHandler = (e) => {
+                if (e.key === 'Escape') hideLogoutModal();
+            };
+            // armazenar no elemento para podermos remover depois
+            modal._escHandler = escHandler;
+            document.addEventListener('keydown', escHandler);
+
+            // Colocar foco no botão confirmar
             if (confirmBtn) confirmBtn.focus();
         }
 
         function hideLogoutModal() {
             const modal = document.getElementById('logout-modal');
             if (!modal) return;
-            modal.classList.add('hidden');
-            modal.setAttribute('aria-hidden', 'true');
+
+            // Remover listener de Escape
+            if (modal._escHandler) document.removeEventListener('keydown', modal._escHandler);
+
+            modal.remove();
+
             // Retornar foco para o botão de logout
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) logoutBtn.focus();
