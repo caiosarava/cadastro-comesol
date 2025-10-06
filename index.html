@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastramento Anual - COMESOL</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --primary-light: #60ad5e;
+            --primary-dark: #005005;
+            --secondary-color: #0277bd;
+            --secondary-light: #58a5f0;
+            --secondary-dark: #004c8c;
+            --text-color: #333;
+            --light-gray: #f5f5f5;
+            --border-color: #ddd;
+            --error-color: #d32f2f;
+            --success-color: #388e3c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f9f9f9;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(2, 119, 189, 0.2);
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--secondary-dark);
+        }
+
+        .btn-danger {
+            background-color: var(--error-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+        }
+
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .member-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: var(--light-gray);
+        }
+
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .member-preview {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        .status-connected {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .status-disconnected {
+            background-color: var(--error-color);
+            color: white;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+        }
+
+        .members-counter {
+            margin: 15px 0;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .member-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .member-header button {
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="connection-status hidden"></div>
+
+    <!-- Página de Login -->
+    <div id="login-page" class="container">
+        <div class="login-container">
+            <div class="card">
+                <h1>Cadastramento Anual - COMESOL</h1>
+                <p style="text-align: center; margin-bottom: 20px;">Faça login para acessar o sistema</p>
+                
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" placeholder="Seu e-mail">
+                    <div id="email-error" class="error-message">E-mail inválido</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" placeholder="Sua senha">
+                    <div id="password-error" class="error-message">Senha é obrigatória</div>
+                </div>
+                
+                <button id="login-btn" class="btn btn-primary" style="width: 100%;">Entrar</button>
+                
+                <p style="text-align: center; margin-top: 15px;">
+                    Não tem conta? <a href="#" id="signup-link">Cadastre-se</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Página de Cadastro -->
+    <div id="register-page" class="container hidden">
+        <div class="card">
+            <h1>Cadastro de Empreendimento</h1>
+            
+            <!-- Seção Informações do Grupo -->
+            <div class="section">
+                <h2>Informações do Grupo</h2>
+                
+                <div class="form-group">
+                    <label for="group-name">Nome do grupo/empreendimento *</label>
+                    <input type="text" id="group-name" placeholder="Nome do grupo">
+                    <div id="group-name-error" class="error-message">Nome do grupo é obrigatório</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="representative-name">Nome do representante *</label>
+                    <input type="text" id="representative-name" placeholder="Nome do representante">
+                    <div id="representative-name-error" class="error-message">Nome do representante é obrigatório</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact-email">E-mail de contato *</label>
+                    <input type="email" id="contact-email" placeholder="E-mail de contato">
+                    <div id="contact-email-error" class="error-message">E-mail de contato é obrigatório</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="has-headquarters">Possui sede própria? *</label>
+                    <select id="has-headquarters">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                    </select>
+                    <div id="has-headquarters-error" class="error-message">Este campo é obrigatório</div>
+                </div>
+                
+                <div id="headquarters-address-group" class="form-group hidden">
+                    <label for="headquarters-address">Endereço completo da sede *</label>
+                    <textarea id="headquarters-address" rows="3" placeholder="Endereço completo"></textarea>
+                    <div id="headquarters-address-error" class="error-message">Endereço é obrigatório</div>
+                </div>
+            </div>
+            
+            <!-- Seção Cadastro dos Membros -->
+            <div class="section">
+                <h2>Cadastro dos Membros</h2>
+                
+                <!-- Subseção Dados Pessoais -->
+                <div class="sub-section">
+                    <h3>Dados Pessoais</h3>
+                    
+                    <div class="form-group">
+                        <label for="member-name">Nome Completo *</label>
+                        <input type="text" id="member-name" placeholder="Nome completo">
+                        <div id="member-name-error" class="error-message">Nome completo é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="birth-date">Data de Nascimento *</label>
+                        <input type="date" id="birth-date">
+                        <div id="birth-date-error" class="error-message">Data de nascimento é obrigatória</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mother-name">Nome da Mãe *</label>
+                        <input type="text" id="mother-name" placeholder="Nome da mãe">
+                        <div id="mother-name-error" class="error-message">Nome da mãe é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="address">Endereço completo *</label>
+                        <textarea id="address" rows="3" placeholder="Endereço completo"></textarea>
+                        <div id="address-error" class="error-message">Endereço é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cep">CEP *</label>
+                        <input type="text" id="cep" placeholder="00000-000" maxlength="9">
+                        <div id="cep-error" class="error-message">CEP é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cpf">CPF *</label>
+                        <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14">
+                        <div id="cpf-error" class="error-message">CPF é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">Celular *</label>
+                        <input type="text" id="phone" placeholder="(00) 00000-0000" maxlength="15">
+                        <div id="phone-error" class="error-message">Celular é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="member-email">E-mail *</label>
+                        <input type="email" id="member-email" placeholder="E-mail">
+                        <div id="member-email-error" class="error-message">E-mail é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="rg">RG</label>
+                        <input type="text" id="rg" placeholder="RG (opcional)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mei-cnpj">MEI/CNPJ</label>
+                        <input type="text" id="mei-cnpj" placeholder="MEI/CNPJ (opcional)">
+                    </div>
+                </div>
+                
+                <!-- Subseção Dados Demográficos e Sociais -->
+                <div class="sub-section">
+                    <h3>Dados Demográficos e Sociais</h3>
+                    
+                    <div class="form-group">
+                        <label for="gender">Gênero *</label>
+                        <select id="gender">
+                            <option value="">Selecione</option>
+                            <option value="homem-cisgenero">Homem cisgênero</option>
+                            <option value="mulher-cisgenero">Mulher cisgênero</option>
+                            <option value="homem-transgenero">Homem transgênero</option>
+                            <option value="mulher-transgenero">Mulher transgênero</option>
+                            <option value="nao-binario">Não-Binário</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                        <div id="gender-error" class="error-message">Gênero é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ethnicity">Etnia/Cor *</label>
+                        <select id="ethnicity">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="preto">Preto</option>
+                            <option value="pardo">Pardo</option>
+                            <option value="amarelo">Amarelo</option>
+                            <option value="indigena">Indígena</option>
+                        </select>
+                        <div id="ethnicity-error" class="error-message">Etnia/Cor é obrigatória</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="education">Escolaridade *</label>
+                        <select id="education">
+                            <option value="">Selecione</option>
+                            <option value="nao-alfabetizado">Não alfabetizado</option>
+                            <option value="fundamental-incompleto">Fundamental incompleto</option>
+                            <option value="fundamental-completo">Fundamental completo</option>
+                            <option value="medio-incompleto">Médio incompleto</option>
+                            <option value="medio-completo">Médio completo</option>
+                            <option value="superior-incompleto">Superior incompleto</option>
+                            <option value="superior-completo">Superior completo</option>
+                            <option value="pos-graduacao">Pós Graduação</option>
+                        </select>
+                        <div id="education-error" class="error-message">Escolaridade é obrigatória</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="household-members">Quantas pessoas moram na sua casa? *</label>
+                        <input type="number" id="household-members" min="1" placeholder="Número de pessoas">
+                        <div id="household-members-error" class="error-message">Este campo é obrigatório</div>
+                    </div>
+                </div>
+                
+                <!-- Subseção Dados do Empreendimento e Renda -->
+                <div class="sub-section">
+                    <h3>Dados do Empreendimento e Renda</h3>
+                    
+                    <div class="form-group">
+                        <label for="role">Qual sua função dentro do grupo? *</label>
+                        <input type="text" id="role" placeholder="Ex.: coordenador, financeiro, marketing">
+                        <div id="role-error" class="error-message">Função é obrigatória</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="products-services">Quais produtos ou serviços oferece? *</label>
+                        <textarea id="products-services" rows="3" placeholder="Produtos ou serviços"></textarea>
+                        <div id="products-services-error" class="error-message">Este campo é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="raw-materials">Quais matérias primas utiliza? *</label>
+                        <textarea id="raw-materials" rows="3" placeholder="Matérias primas"></textarea>
+                        <div id="raw-materials-error" class="error-message">Este campo é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="monthly-income">Qual a renda média mensal obtida no empreendimento? *</label>
+                        <select id="monthly-income">
+                            <option value="">Selecione</option>
+                            <option value="ate-1-sm">Até 1 salário mínimo</option>
+                            <option value="1-a-2-sm">1 a 2 salários mínimos</option>
+                            <option value="2-a-3-sm">2 a 3 salários mínimos</option>
+                            <option value="3-a-4-sm">3 a 4 salários mínimos</option>
+                            <option value="mais-de-4-sm">Mais de 4 salários mínimos</option>
+                        </select>
+                        <div id="monthly-income-error" class="error-message">Renda mensal é obrigatória</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="involvement">Qual seu envolvimento com o movimento da economia solidária? *</label>
+                        <textarea id="involvement" rows="3" placeholder="Envolvimento"></textarea>
+                        <div id="involvement-error" class="error-message">Este campo é obrigatório</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="other-activities">Desenvolve outra atividade econômica além do empreendimento? *</label>
+                        <select id="other-activities">
+                            <option value="">Selecione</option>
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                        </select>
+                        <div id="other-activities-error" class="error-message">Este campo é obrigatório</div>
+                    </div>
+                    
+                    <div id="other-activities-details-group" class="form-group hidden">
+                        <label for="other-activities-details">Qual outra atividade econômica? *</label>
+                        <textarea id="other-activities-details" rows="3" placeholder="Descreva a outra atividade"></textarea>
+                        <div id="other-activities-details-error" class="error-message">Este campo é obrigatório</div>
+                    </div>
+                </div>
+                
+                <button id="add-member-btn" class="btn btn-secondary">+ Adicionar Membro</button>
+            </div>
+            
+            <!-- Lista de Membros Adicionados -->
+            <div id="members-list" class="section">
+                <h3>Membros Adicionados</h3>
+                <div id="members-counter" class="members-counter">0 membros adicionados</div>
+                <div id="members-container"></div>
+            </div>
+            
+            <button id="save-group-btn" class="btn btn-primary" disabled>Salvar Cadastro do Grupo</button>
+        </div>
+    </div>
+
+    <!-- Página de Visualização -->
+    <div id="view-page" class="container hidden">
+        <div class="card">
+            <div class="section-title">
+                <h1>Visualização do Cadastro</h1>
+                <button id="edit-btn" class="btn btn-secondary">Editar</button>
+            </div>
+            
+            <!-- Informações do Grupo -->
+            <div class="section">
+                <h2>Informações do Grupo</h2>
+                <div id="group-info-view"></div>
+            </div>
+            
+            <!-- Membros do Grupo -->
+            <div class="section">
+                <h2>Membros do Grupo</h2>
+                <div id="members-view"></div>
+                <button id="add-new-member-btn" class="btn btn-secondary" style="margin-top: 15px;">+ Adicionar Novo Membro</button>
+            </div>
+            
+            <button id="save-changes-btn" class="btn btn-primary hidden">Salvar Alterações</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://egarccprmvgqsvivnerc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnYXJjY3BybXZncXN2aXZuZXJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNjU0NTksImV4cCI6MjA3NDc0MTQ1OX0.Q_fdoeRnHx52EFOHIqk_icwe6auXDmmmLeJ266mSzEw';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Elementos da página
+        const loginPage = document.getElementById('login-page');
+        const registerPage = document.getElementById('register-page');
+        const viewPage = document.getElementById('view-page');
+        const connectionStatus = document.getElementById('connection-status');
+        
+        // Variáveis de estado
+        let currentUser = null;
+        let userGroup = null;
+        let groupMembers = [];
+        let isEditing = false;
+        
+        // Inicialização da aplicação
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Verificar conexão com o Supabase
+            await checkSupabaseConnection();
+            
+            // Verificar se o usuário já está logado
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                await checkUserRegistration();
+            } else {
+                showLoginPage();
+            }
+            
+            // Configurar event listeners
+            setupEventListeners();
+        });
+        
+        // Verificar conexão com o Supabase
+        async function checkSupabaseConnection() {
+            try {
+                const { data, error } = await supabase.from('groups').select('count');
+                
+                if (error) {
+                    showConnectionStatus(false, 'Erro de conexão com o banco de dados');
+                    throw error;
+                } else {
+                    showConnectionStatus(true, 'Conectado ao banco de dados');
+                }
+            } catch (error) {
+                console.error('Erro na conexão com Supabase:', error);
+                showConnectionStatus(false, 'Erro de conexão com o banco de dados');
+            }
+        }
+        
+        // Mostrar status da conexão
+        function showConnectionStatus(connected, message) {
+            connectionStatus.textContent = message;
+            connectionStatus.className = `connection-status ${connected ? 'status-connected' : 'status-disconnected'}`;
+            connectionStatus.classList.remove('hidden');
+        }
+        
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Login
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            document.getElementById('signup-link').addEventListener('click', handleSignup);
+            
+            // Cadastro do grupo
+            document.getElementById('has-headquarters').addEventListener('change', toggleHeadquartersAddress);
+            document.getElementById('other-activities').addEventListener('change', toggleOtherActivitiesDetails);
+            
+            // Máscaras de entrada
+            document.getElementById('cep').addEventListener('input', formatCEP);
+            document.getElementById('cpf').addEventListener('input', formatCPF);
+            document.getElementById('phone').addEventListener('input', formatPhone);
+            
+            // Membros
+            document.getElementById('add-member-btn').addEventListener('click', addMember);
+            document.getElementById('save-group-btn').addEventListener('click', saveGroup);
+            
+            // Visualização/edição
+            document.getElementById('edit-btn').addEventListener('click', enableEditing);
+            document.getElementById('add-new-member-btn').addEventListener('click', addNewMember);
+            document.getElementById('save-changes-btn').addEventListener('click', saveChanges);
+        }
+        
+        // Funções de autenticação
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!validateEmail(email)) {
+                showError('email-error', 'E-mail inválido');
+                return;
+            }
+            
+            if (!password) {
+                showError('password-error', 'Senha é obrigatória');
+                return;
+            }
+            
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+            
+            if (error) {
+                alert('Erro no login: ' + error.message);
+            } else {
+                currentUser = data.user;
+                await checkUserRegistration();
+            }
+        }
+        
+        async function handleSignup(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!validateEmail(email)) {
+                showError('email-error', 'E-mail inválido');
+                return;
+            }
+            
+            if (!password) {
+                showError('password-error', 'Senha é obrigatória');
+                return;
+            }
+            
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password
+            });
+            
+            if (error) {
+                alert('Erro no cadastro: ' + error.message);
+            } else {
+                alert('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.');
+            }
+        }
+        
+        // Verificar se o usuário já tem cadastro
+        async function checkUserRegistration() {
+            const { data, error } = await supabase
+                .from('groups')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') { // PGRST116 é o código para "nenhum resultado"
+                console.error('Erro ao verificar cadastro:', error);
+                return;
+            }
+            
+            if (data) {
+                userGroup = data;
+                // Buscar membros do grupo
+                const { data: membersData, error: membersError } = await supabase
+                    .from('members')
+                    .select('*')
+                    .eq('group_id', userGroup.id);
+                
+                if (!membersError) {
+                    groupMembers = membersData;
+                }
+                
+                showViewPage();
+            } else {
+                showRegisterPage();
+            }
+        }
+        
+        // Navegação entre páginas
+        function showLoginPage() {
+            loginPage.classList.remove('hidden');
+            registerPage.classList.add('hidden');
+            viewPage.classList.add('hidden');
+        }
+        
+        function showRegisterPage() {
+            loginPage.classList.add('hidden');
+            registerPage.classList.remove('hidden');
+            viewPage.classList.add('hidden');
+        }
+        
+        function showViewPage() {
+            loginPage.classList.add('hidden');
+            registerPage.classList.add('hidden');
+            viewPage.classList.remove('hidden');
+            renderGroupInfo();
+            renderMembers();
+        }
+        
+        // Toggle de campos condicionais
+        function toggleHeadquartersAddress() {
+            const hasHeadquarters = document.getElementById('has-headquarters').value;
+            const addressGroup = document.getElementById('headquarters-address-group');
+            
+            if (hasHeadquarters === 'sim') {
+                addressGroup.classList.remove('hidden');
+            } else {
+                addressGroup.classList.add('hidden');
+            }
+        }
+        
+        function toggleOtherActivitiesDetails() {
+            const hasOtherActivities = document.getElementById('other-activities').value;
+            const detailsGroup = document.getElementById('other-activities-details-group');
+            
+            if (hasOtherActivities === 'sim') {
+                detailsGroup.classList.remove('hidden');
+            } else {
+                detailsGroup.classList.add('hidden');
+            }
+        }
+        
+        // Formatação de campos
+        function formatCEP(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 5) {
+                value = value.substring(0, 5) + '-' + value.substring(5, 8);
+            }
+            e.target.value = value;
+        }
+        
+        function formatCPF(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 3 && value.length <= 6) {
+                value = value.substring(0, 3) + '.' + value.substring(3);
+            } else if (value.length > 6 && value.length <= 9) {
+                value = value.substring(0, 3) + '.' + value.substring(3, 6) + '.' + value.substring(6);
+            } else if (value.length > 9) {
+                value = value.substring(0, 3) + '.' + value.substring(3, 6) + '.' + value.substring(6, 9) + '-' + value.substring(9, 11);
+            }
+            e.target.value = value;
+        }
+        
+        function formatPhone(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                value = '(' + value.substring(0, 2) + ') ' + value.substring(2);
+            }
+            if (value.length > 9) {
+                value = value.substring(0, 10) + '-' + value.substring(10);
+            }
+            e.target.value = value;
+        }
+        
+        // Validação de e-mail
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+        
+        // Mostrar/ocultar erro
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function hideError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.style.display = 'none';
+        }
+        
+        // Adicionar membro
+        function addMember() {
+            // Validar campos obrigatórios
+            if (!validateMemberForm()) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Coletar dados do formulário
+            const memberData = {
+                name: document.getElementById('member-name').value,
+                birth_date: document.getElementById('birth-date').value,
+                mother_name: document.getElementById('mother-name').value,
+                address: document.getElementById('address').value,
+                cep: document.getElementById('cep').value,
+                cpf: document.getElementById('cpf').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('member-email').value,
+                rg: document.getElementById('rg').value,
+                mei_cnpj: document.getElementById('mei-cnpj').value,
+                gender: document.getElementById('gender').value,
+                ethnicity: document.getElementById('ethnicity').value,
+                education: document.getElementById('education').value,
+                household_members: parseInt(document.getElementById('household-members').value),
+                role: document.getElementById('role').value,
+                products_services: document.getElementById('products-services').value,
+                raw_materials: document.getElementById('raw-materials').value,
+                monthly_income: document.getElementById('monthly-income').value,
+                involvement: document.getElementById('involvement').value,
+                other_activities: document.getElementById('other-activities').value,
+                other_activities_details: document.getElementById('other-activities').value === 'sim' ? 
+                    document.getElementById('other-activities-details').value : null
+            };
+            
+            // Adicionar à lista de membros
+            groupMembers.push(memberData);
+            
+            // Atualizar visualização
+            updateMembersList();
+            
+            // Limpar formulário
+            clearMemberForm();
+            
+            // Habilitar botão de salvar grupo se houver pelo menos um membro
+            if (groupMembers.length > 0) {
+                document.getElementById('save-group-btn').disabled = false;
+            }
+        }
+        
+        // Validar formulário de membro
+        function validateMemberForm() {
+            let isValid = true;
+            
+            // Validar campos obrigatórios
+            const requiredFields = [
+                'member-name', 'birth-date', 'mother-name', 'address', 'cep', 'cpf',
+                'phone', 'member-email', 'gender', 'ethnicity', 'education', 
+                'household-members', 'role', 'products-services', 'raw-materials',
+                'monthly-income', 'involvement', 'other-activities'
+            ];
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value) {
+                    isValid = false;
+                    showError(`${fieldId}-error`, 'Este campo é obrigatório');
+                } else {
+                    hideError(`${fieldId}-error`);
+                }
+            });
+            
+            // Validações específicas
+            if (document.getElementById('other-activities').value === 'sim' && 
+                !document.getElementById('other-activities-details').value) {
+                isValid = false;
+                showError('other-activities-details-error', 'Este campo é obrigatório');
+            } else {
+                hideError('other-activities-details-error');
+            }
+            
+            if (!validateEmail(document.getElementById('member-email').value)) {
+                isValid = false;
+                showError('member-email-error', 'E-mail inválido');
+            }
+            
+            return isValid;
+        }
+        
+        // Limpar formulário de membro
+        function clearMemberForm() {
+            const memberForm = document.getElementById('register-page');
+            const inputs = memberForm.querySelectorAll('input, select, textarea');
+            
+            inputs.forEach(input => {
+                // Não limpar campos da seção de informações do grupo
+                if (!input.closest('.section:first-child')) {
+                    input.value = '';
+                }
+            });
+            
+            // Resetar campos condicionais
+            document.getElementById('headquarters-address-group').classList.add('hidden');
+            document.getElementById('other-activities-details-group').classList.add('hidden');
+        }
+        
+        // Atualizar lista de membros
+        function updateMembersList() {
+            const container = document.getElementById('members-container');
+            const counter = document.getElementById('members-counter');
+            
+            // Atualizar contador
+            counter.textContent = `${groupMembers.length} membro(s) adicionado(s)`;
+            
+            // Limpar container
+            container.innerHTML = '';
+            
+            // Adicionar cada membro
+            groupMembers.forEach((member, index) => {
+                const memberCard = document.createElement('div');
+                memberCard.className = 'member-card';
+                
+                memberCard.innerHTML = `
+                    <div class="member-header">
+                        <h4>${member.name}</h4>
+                        <button class="btn btn-danger delete-member" data-index="${index}">
+                            🗑️ Excluir
+                        </button>
+                    </div>
+                    <div class="member-preview">
+                        <p><strong>Função:</strong> ${member.role}</p>
+                        <p><strong>E-mail:</strong> ${member.email}</p>
+                        <p><strong>Celular:</strong> ${member.phone}</p>
+                    </div>
+                `;
+                
+                container.appendChild(memberCard);
+            });
+            
+            // Adicionar event listeners para botões de exclusão
+            document.querySelectorAll('.delete-member').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    groupMembers.splice(index, 1);
+                    updateMembersList();
+                    
+                    // Desabilitar botão de salvar se não houver membros
+                    if (groupMembers.length === 0) {
+                        document.getElementById('save-group-btn').disabled = true;
+                    }
+                });
+            });
+        }
+        
+        // Salvar grupo
+        async function saveGroup() {
+            // Validar informações do grupo
+            if (!validateGroupForm()) {
+                alert('Por favor, preencha todas as informações obrigatórias do grupo.');
+                return;
+            }
+            
+            // Coletar dados do grupo
+            const groupData = {
+                user_id: currentUser.id,
+                name: document.getElementById('group-name').value,
+                representative_name: document.getElementById('representative-name').value,
+                contact_email: document.getElementById('contact-email').value,
+                has_headquarters: document.getElementById('has-headquarters').value,
+                headquarters_address: document.getElementById('has-headquarters').value === 'sim' ? 
+                    document.getElementById('headquarters-address').value : null
+            };
+            
+            try {
+                // Salvar grupo no Supabase
+                const { data: group, error: groupError } = await supabase
+                    .from('groups')
+                    .insert([groupData])
+                    .select()
+                    .single();
+                
+                if (groupError) throw groupError;
+                
+                userGroup = group;
+                
+                // Salvar membros no Supabase
+                const membersWithGroupId = groupMembers.map(member => ({
+                    ...member,
+                    group_id: group.id
+                }));
+                
+                const { error: membersError } = await supabase
+                    .from('members')
+                    .insert(membersWithGroupId);
+                
+                if (membersError) throw membersError;
+                
+                alert('Cadastro salvo com sucesso!');
+                showViewPage();
+                
+            } catch (error) {
+                console.error('Erro ao salvar cadastro:', error);
+                alert('Erro ao salvar cadastro. Tente novamente.');
+            }
+        }
+        
+        // Validar formulário do grupo
+        function validateGroupForm() {
+            let isValid = true;
+            
+            // Validar campos obrigatórios
+            const requiredFields = ['group-name', 'representative-name', 'contact-email', 'has-headquarters'];
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value) {
+                    isValid = false;
+                    showError(`${fieldId}-error`, 'Este campo é obrigatório');
+                } else {
+                    hideError(`${fieldId}-error`);
+                }
+            });
+            
+            // Validações específicas
+            if (!validateEmail(document.getElementById('contact-email').value)) {
+                isValid = false;
+                showError('contact-email-error', 'E-mail inválido');
+            }
+            
+            if (document.getElementById('has-headquarters').value === 'sim' && 
+                !document.getElementById('headquarters-address').value) {
+                isValid = false;
+                showError('headquarters-address-error', 'Endereço é obrigatório');
+            }
+            
+            return isValid;
+        }
+        
+        // Renderizar informações do grupo na página de visualização
+        function renderGroupInfo() {
+            const container = document.getElementById('group-info-view');
+            
+            if (!userGroup) return;
+            
+            container.innerHTML = `
+                <p><strong>Nome do Grupo:</strong> ${userGroup.name}</p>
+                <p><strong>Representante:</strong> ${userGroup.representative_name}</p>
+                <p><strong>E-mail de Contato:</strong> ${userGroup.contact_email}</p>
+                <p><strong>Possui Sede Própria:</strong> ${userGroup.has_headquarters === 'sim' ? 'Sim' : 'Não'}</p>
+                ${userGroup.has_headquarters === 'sim' ? 
+                    `<p><strong>Endereço da Sede:</strong> ${userGroup.headquarters_address}</p>` : ''}
+            `;
+        }
+        
+        // Renderizar membros na página de visualização
+        function renderMembers() {
+            const container = document.getElementById('members-view');
+            
+            if (!groupMembers || groupMembers.length === 0) {
+                container.innerHTML = '<p>Nenhum membro cadastrado.</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            groupMembers.forEach((member, index) => {
+                const memberCard = document.createElement('div');
+                memberCard.className = 'member-card';
+                
+                memberCard.innerHTML = `
+                    <div class="member-header">
+                        <h4>${member.name}</h4>
+                        ${isEditing ? 
+                            `<button class="btn btn-danger delete-member-view" data-index="${index}">
+                                🗑️ Excluir
+                            </button>` : ''}
+                    </div>
+                    <div class="member-details">
+                        <p><strong>Data de Nascimento:</strong> ${formatDate(member.birth_date)}</p>
+                        <p><strong>Nome da Mãe:</strong> ${member.mother_name}</p>
+                        <p><strong>Endereço:</strong> ${member.address}</p>
+                        <p><strong>CEP:</strong> ${member.cep}</p>
+                        <p><strong>CPF:</strong> ${member.cpf}</p>
+                        <p><strong>Celular:</strong> ${member.phone}</p>
+                        <p><strong>E-mail:</strong> ${member.email}</p>
+                        ${member.rg ? `<p><strong>RG:</strong> ${member.rg}</p>` : ''}
+                        ${member.mei_cnpj ? `<p><strong>MEI/CNPJ:</strong> ${member.mei_cnpj}</p>` : ''}
+                        <p><strong>Gênero:</strong> ${formatGender(member.gender)}</p>
+                        <p><strong>Etnia/Cor:</strong> ${formatEthnicity(member.ethnicity)}</p>
+                        <p><strong>Escolaridade:</strong> ${formatEducation(member.education)}</p>
+                        <p><strong>Pessoas na Casa:</strong> ${member.household_members}</p>
+                        <p><strong>Função no Grupo:</strong> ${member.role}</p>
+                        <p><strong>Produtos/Serviços:</strong> ${member.products_services}</p>
+                        <p><strong>Matérias Primas:</strong> ${member.raw_materials}</p>
+                        <p><strong>Renda Mensal:</strong> ${formatIncome(member.monthly_income)}</p>
+                        <p><strong>Envolvimento com Economia Solidária:</strong> ${member.involvement}</p>
+                        <p><strong>Outra Atividade Econômica:</strong> ${member.other_activities === 'sim' ? 'Sim' : 'Não'}</p>
+                        ${member.other_activities === 'sim' ? 
+                            `<p><strong>Detalhes da Outra Atividade:</strong> ${member.other_activities_details}</p>` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(memberCard);
+            });
+            
+            // Adicionar event listeners para botões de exclusão se estiver editando
+            if (isEditing) {
+                document.querySelectorAll('.delete-member-view').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        groupMembers.splice(index, 1);
+                        renderMembers();
+                    });
+                });
+            }
+        }
+        
+        // Funções auxiliares de formatação
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+        
+        function formatGender(gender) {
+            const genders = {
+                'homem-cisgenero': 'Homem cisgênero',
+                'mulher-cisgenero': 'Mulher cisgênero',
+                'homem-transgenero': 'Homem transgênero',
+                'mulher-transgenero': 'Mulher transgênero',
+                'nao-binario': 'Não-Binário',
+                'outro': 'Outro'
+            };
+            return genders[gender] || gender;
+        }
+        
+        function formatEthnicity(ethnicity) {
+            const ethnicities = {
+                'branco': 'Branco',
+                'preto': 'Preto',
+                'pardo': 'Pardo',
+                'amarelo': 'Amarelo',
+                'indigena': 'Indígena'
+            };
+            return ethnicities[ethnicity] || ethnicity;
+        }
+        
+        function formatEducation(education) {
+            const educations = {
+                'nao-alfabetizado': 'Não alfabetizado',
+                'fundamental-incompleto': 'Fundamental incompleto',
+                'fundamental-completo': 'Fundamental completo',
+                'medio-incompleto': 'Médio incompleto',
+                'medio-completo': 'Médio completo',
+                'superior-incompleto': 'Superior incompleto',
+                'superior-completo': 'Superior completo',
+                'pos-graduacao': 'Pós Graduação'
+            };
+            return educations[education] || education;
+        }
+        
+        function formatIncome(income) {
+            const incomes = {
+                'ate-1-sm': 'Até 1 salário mínimo',
+                '1-a-2-sm': '1 a 2 salários mínimos',
+                '2-a-3-sm': '2 a 3 salários mínimos',
+                '3-a-4-sm': '3 a 4 salários mínimos',
+                'mais-de-4-sm': 'Mais de 4 salários mínimos'
+            };
+            return incomes[income] || income;
+        }
+        
+        // Habilitar edição
+        function enableEditing() {
+            isEditing = true;
+            document.getElementById('edit-btn').classList.add('hidden');
+            document.getElementById('save-changes-btn').classList.remove('hidden');
+            document.getElementById('add-new-member-btn').classList.remove('hidden');
+            renderMembers();
+        }
+        
+        // Adicionar novo membro (na página de visualização/edição)
+        function addNewMember() {
+            showRegisterPage();
+            // Aqui você poderia implementar uma lógica para preencher automaticamente
+            // os dados do grupo se já existirem
+        }
+        
+        // Salvar alterações
+        async function saveChanges() {
+            try {
+                // Atualizar informações do grupo (se necessário)
+                // Neste exemplo, não estamos permitindo edição das informações do grupo
+                // Mas você pode implementar essa funcionalidade se necessário
+                
+                // Atualizar membros
+                // Primeiro, excluir membros removidos
+                // Em uma implementação real, você precisaria comparar com os membros existentes no banco
+                
+                // Salvar/atualizar membros no banco
+                const { error: membersError } = await supabase
+                    .from('members')
+                    .upsert(groupMembers.map(member => ({
+                        ...member,
+                        group_id: userGroup.id
+                    })));
+                
+                if (membersError) throw membersError;
+                
+                alert('Alterações salvas com sucesso!');
+                isEditing = false;
+                document.getElementById('edit-btn').classList.remove('hidden');
+                document.getElementById('save-changes-btn').classList.add('hidden');
+                document.getElementById('add-new-member-btn').classList.add('hidden');
+                renderMembers();
+                
+            } catch (error) {
+                console.error('Erro ao salvar alterações:', error);
+                alert('Erro ao salvar alterações. Tente novamente.');
+            }
+        }
+    </script>
+</body>
+</html>
