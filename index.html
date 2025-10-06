@@ -1188,12 +1188,23 @@
         
         // Salvar grupo
         async function saveGroup() {
-            // Permitir salvar o grupo desde que exista pelo menos 1 membro local
+            // Regras mínimas antes de tentar salvar
             if (!groupMembers || groupMembers.length === 0) {
                 alert('É necessário adicionar pelo menos 1 membro antes de salvar o grupo.');
                 return;
             }
-            
+
+            if (!currentUser) {
+                alert('Usuário não autenticado. Faça login novamente e tente salvar.');
+                return;
+            }
+
+            // Validar campos do grupo
+            if (!validateGroupForm()) {
+                alert('Por favor, corrija os campos do grupo antes de salvar.');
+                return;
+            }
+
             // Coletar dados do grupo
             const groupData = {
                 user_id: currentUser.id,
@@ -1204,7 +1215,7 @@
                 headquarters_address: document.getElementById('has-headquarters').value === 'sim' ? 
                     document.getElementById('headquarters-address').value : null
             };
-            
+
             try {
                 // Salvar ou atualizar grupo no Supabase
                 let group;
@@ -1215,7 +1226,7 @@
                         .eq('id', userGroup.id)
                         .select()
                         .single();
-                    if (error) throw error;
+                    if (error) throw new Error('Erro ao atualizar grupo: ' + (error.message || JSON.stringify(error)));
                     group = data;
                 } else {
                     const { data, error } = await supabase
@@ -1223,17 +1234,16 @@
                         .insert([groupData])
                         .select()
                         .single();
-                    if (error) throw error;
+                    if (error) throw new Error('Erro ao inserir grupo: ' + (error.message || JSON.stringify(error)));
                     group = data;
                 }
 
                 userGroup = group;
-                
-                // Salvar membros no Supabase
-                // Primeiro processar deleções marcadas (se houver)
+
+                // Processar deleções marcadas (se houver)
                 if (deletedMemberIds.length > 0) {
                     const { error: deleteError } = await supabase.from('members').delete().in('id', deletedMemberIds);
-                    if (deleteError) throw deleteError;
+                    if (deleteError) throw new Error('Erro ao deletar membros: ' + (deleteError.message || JSON.stringify(deleteError)));
                     deletedMemberIds = [];
                 }
 
@@ -1241,12 +1251,13 @@
                 const toUpsert = groupMembers.map(m => ({ ...m, group_id: group.id, user_id: currentUser.id }));
                 if (toUpsert.length > 0) {
                     const { error: membersError } = await supabase.from('members').upsert(toUpsert);
-                    if (membersError) throw membersError;
+                    if (membersError) throw new Error('Erro ao upsertar membros: ' + (membersError.message || JSON.stringify(membersError)));
                 }
 
                 // Recarregar membros do banco para garantir estado consistente
                 const { data: membersData, error: membersFetchError } = await supabase.from('members').select('*').eq('group_id', group.id);
-                if (!membersFetchError && membersData) {
+                if (membersFetchError) throw new Error('Erro ao buscar membros: ' + (membersFetchError.message || JSON.stringify(membersFetchError)));
+                if (membersData) {
                     groupMembers = membersData;
                 }
 
@@ -1256,10 +1267,12 @@
                 lockGroupFields(true);
                 // Atualizar lista de membros
                 updateMembersList();
-                
+
             } catch (error) {
                 console.error('Erro ao salvar cadastro:', error);
-                alert('Erro ao salvar cadastro. Tente novamente.');
+                // Mostrar mensagem mais detalhada para ajudar debug
+                const msg = error && error.message ? error.message : JSON.stringify(error);
+                alert('Erro ao salvar cadastro: ' + msg);
             }
         }
         
