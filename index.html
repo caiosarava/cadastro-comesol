@@ -617,11 +617,20 @@
         async function checkSupabaseConnection() {
             try {
                 // Fazer uma consulta simples para checar conectividade (evita requisições que causem 406)
+                const restUrl = `${SUPABASE_URL}/rest/v1/groups?select=id&limit=1`;
+                console.log('checkSupabaseConnection will call:', restUrl);
+
                 const { data, error, status, statusText } = await supabase.from('groups').select('id').limit(1);
 
                 if (error) {
                     // Logar detalhes para diagnóstico (inclui status/statusText quando disponível)
                     console.error('checkSupabaseConnection failed', { error, status, statusText });
+                    try {
+                        // alguns objetos de erro têm propriedades não enumeráveis; forçar serialização para inspecionar tudo
+                        console.error('full error dump:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+                    } catch (e) {
+                        console.error('could not stringify error object', e);
+                    }
                     showConnectionStatus(false, 'Erro de conexão com o banco de dados');
                     throw error;
                 } else {
