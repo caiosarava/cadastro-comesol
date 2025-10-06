@@ -650,6 +650,17 @@
             // Cadastro do grupo
             document.getElementById('has-headquarters').addEventListener('change', toggleHeadquartersAddress);
             document.getElementById('other-activities').addEventListener('change', toggleOtherActivitiesDetails);
+
+            // Atualizar estado do botão de salvar quando campos do grupo mudarem
+            ['group-name', 'representative-name', 'contact-email', 'has-headquarters', 'headquarters-address'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const eventName = el.tagName.toLowerCase() === 'select' ? 'change' : 'input';
+                el.addEventListener(eventName, () => {
+                    // esconder mensagens de erro enquanto digita? manter validateGroupForm behavior
+                    updateSaveGroupButtonState();
+                });
+            });
             
             // Máscaras de entrada
             document.getElementById('cep').addEventListener('input', formatCEP);
@@ -908,6 +919,7 @@
             if (userGroup) {
                 populateGroupFields();
                 lockGroupFields(true);
+                updateSaveGroupButtonState();
             }
         }
 
@@ -951,6 +963,9 @@
                     editGroupBtn.classList.add('hidden');
                 }
             }
+
+            // Atualizar estado do botão de salvar (por exemplo: travado -> desabilitado)
+            updateSaveGroupButtonState();
         }
         
         function showViewPage() {
@@ -1184,8 +1199,27 @@
             // Atualizar estado do botão de salvar cadastro do grupo: única regra = pelo menos 1 membro local
             const saveGroupBtn = document.getElementById('save-group-btn');
             if (saveGroupBtn) {
-                saveGroupBtn.disabled = groupMembers.length === 0;
+                // Use helper to decide enabled state (group form valid AND at least 1 member) and consider locked fields
+                updateSaveGroupButtonState();
             }
+        }
+
+        // Habilita/desabilita o botão de salvar grupo baseado em validação do formulário de grupo e presença de membros
+        function updateSaveGroupButtonState() {
+            const saveGroupBtn = document.getElementById('save-group-btn');
+            if (!saveGroupBtn) return;
+
+            // if fields are locked, keep save disabled
+            const firstField = document.getElementById('group-name');
+            if (firstField && firstField.disabled) {
+                saveGroupBtn.disabled = true;
+                return;
+            }
+
+            const formValid = validateGroupForm();
+            const hasMembers = groupMembers && groupMembers.length > 0;
+
+            saveGroupBtn.disabled = !(formValid && hasMembers);
         }
         
         // Salvar grupo
