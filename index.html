@@ -1131,9 +1131,9 @@
         
         // Salvar grupo
         async function saveGroup() {
-            // Validar informações do grupo
-            if (!validateGroupForm()) {
-                alert('Por favor, preencha todas as informações obrigatórias do grupo.');
+            // Permitir salvar o grupo desde que exista pelo menos 1 membro local
+            if (!groupMembers || groupMembers.length === 0) {
+                alert('É necessário adicionar pelo menos 1 membro antes de salvar o grupo.');
                 return;
             }
             
@@ -1300,11 +1300,10 @@
                 });
             }
 
-            // Atualizar estado do botão de salvar alterações: única regra = pelo menos 1 membro
+            // Atualizar estado do botão de salvar alterações: única regra = pelo menos 1 membro local
             const saveChangesBtn = document.getElementById('save-changes-btn');
             if (isEditing) {
-                const hasPersisted = groupMembers.some(m => m && m.id);
-                saveChangesBtn.disabled = !hasPersisted;
+                saveChangesBtn.disabled = groupMembers.length === 0;
             }
         }
         
