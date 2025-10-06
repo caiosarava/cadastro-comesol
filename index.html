@@ -578,7 +578,14 @@
         const SUPABASE_URL = 'https://egarccprmvgqsvivnerc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnYXJjY3BybXZncXN2aXZuZXJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNjU0NTksImV4cCI6MjA3NDc0MTQ1OX0.Q_fdoeRnHx52EFOHIqk_icwe6auXDmmmLeJ266mSzEw';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Force Accept header to application/json to avoid potential 406 Not Acceptable
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }
+        });
         
         // Elementos da página
         const loginPage = document.getElementById('login-page');
@@ -885,31 +892,54 @@
         
         // Verificar se o usuário já tem cadastro
         async function checkUserRegistration() {
-            const { data, error } = await supabase
-                .from('groups')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .single();
-            
-            if (error && error.code !== 'PGRST116') { // PGRST116 é o código para "nenhum resultado"
-                console.error('Erro ao verificar cadastro:', error);
-                return;
-            }
-            
-            if (data) {
-                userGroup = data;
+            try {
+                // Fazemos uma query mínima primeiro (apenas id) para evitar problemas de content-negotiation que geram 406
+                const { data: idOnly, error: idError } = await supabase
+                    .from('groups')
+                    .select('id')
+                    .eq('user_id', currentUser.id)
+                    .single();
+
+                if (idError && idError.code !== 'PGRST116') {
+                    console.error('Erro ao buscar id do grupo:', idError);
+                    try { console.error('full error dump:', JSON.stringify(idError, Object.getOwnPropertyNames(idError), 2)); } catch (e) { console.error('could not stringify idError', e); }
+                    return showRegisterPage();
+                }
+
+                if (!idOnly || !idOnly.id) {
+                    // Nenhum grupo encontrado para o usuário
+                    return showRegisterPage();
+                }
+
+                // Encontramos um id; buscar o registro completo por id (segunda etapa)
+                const { data: full, error: fullError } = await supabase
+                    .from('groups')
+                    .select('*')
+                    .eq('id', idOnly.id)
+                    .single();
+
+                if (fullError) {
+                    console.error('Erro ao buscar grupo por id:', fullError);
+                    try { console.error('full error dump:', JSON.stringify(fullError, Object.getOwnPropertyNames(fullError), 2)); } catch (e) { console.error('could not stringify fullError', e); }
+                    return showRegisterPage();
+                }
+
+                userGroup = full;
+
                 // Buscar membros do grupo
                 const { data: membersData, error: membersError } = await supabase
                     .from('members')
                     .select('*')
                     .eq('group_id', userGroup.id);
-                
+
                 if (!membersError) {
                     groupMembers = membersData;
                 }
-                
+
                 showViewPage();
-            } else {
+            } catch (err) {
+                console.error('Erro inesperado em checkUserRegistration:', err);
+                try { console.error('full error dump:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2)); } catch (e) { console.error('could not stringify err', e); }
                 showRegisterPage();
             }
         }
