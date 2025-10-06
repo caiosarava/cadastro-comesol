@@ -696,8 +696,11 @@
             const logoutBtn = document.getElementById('logout-btn');
             if (!logoutBtn) return;
 
-            // Mostrar botão de logout somente quando houver usuário autenticado
-            if (currentUser) {
+            // Não mostrar o botão de logout quando estivermos na página de login
+            const loginVisible = !loginPage.classList.contains('hidden');
+
+            // Mostrar botão de logout somente quando houver usuário autenticado e NÃO estivermos na página de login
+            if (currentUser && !loginVisible) {
                 logoutBtn.classList.remove('hidden');
             } else {
                 logoutBtn.classList.add('hidden');
