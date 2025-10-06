@@ -544,6 +544,7 @@
             </div>
             
             <button id="save-group-btn" class="btn btn-primary" disabled>Salvar Cadastro do Grupo</button>
+            <button id="edit-group-btn" class="btn btn-secondary hidden" style="margin-left:10px;">Editar Grupo</button>
         </div>
     </div>
 
@@ -658,6 +659,17 @@
             // Membros
             document.getElementById('add-member-btn').addEventListener('click', addMember);
             document.getElementById('save-group-btn').addEventListener('click', saveGroup);
+            // Edit Group button (aparece após salvar e trava campos)
+            const editGroupBtn = document.getElementById('edit-group-btn');
+            if (editGroupBtn) editGroupBtn.addEventListener('click', () => {
+                // Destravar campos do grupo para edição
+                lockGroupFields(false);
+                // mostrar o botão de salvar novamente para permitir atualização
+                const saveGroupBtn = document.getElementById('save-group-btn');
+                if (saveGroupBtn) saveGroupBtn.disabled = false;
+                // esconder o botão editar enquanto estiver editando
+                editGroupBtn.classList.add('hidden');
+            });
             // Adicionar tooltips aos botões de salvar
             createTooltipForButton('save-group-btn', 'É necessário cadastrar pelo menos 1 membro para salvar o grupo');
             
@@ -892,6 +904,51 @@
             viewPage.classList.add('hidden');
             // Garantir que o estado do botão de salvar seja atualizado ao entrar na página de registro
             updateMembersList();
+            // Se já existe um grupo carregado, preencher os campos e travá-los
+            if (userGroup) {
+                populateGroupFields();
+                lockGroupFields(true);
+            }
+        }
+
+        // Preenche os campos do formulário de grupo a partir de userGroup
+        function populateGroupFields() {
+            if (!userGroup) return;
+            document.getElementById('group-name').value = userGroup.name || '';
+            document.getElementById('representative-name').value = userGroup.representative_name || '';
+            document.getElementById('contact-email').value = userGroup.contact_email || '';
+            document.getElementById('has-headquarters').value = userGroup.has_headquarters || '';
+            if (userGroup.has_headquarters === 'sim') {
+                document.getElementById('headquarters-address-group').classList.remove('hidden');
+                document.getElementById('headquarters-address').value = userGroup.headquarters_address || '';
+            } else {
+                document.getElementById('headquarters-address-group').classList.add('hidden');
+                document.getElementById('headquarters-address').value = '';
+            }
+        }
+
+        // Trava/destrava campos do grupo (true = travar)
+        function lockGroupFields(lock) {
+            const ids = ['group-name', 'representative-name', 'contact-email', 'has-headquarters', 'headquarters-address'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.disabled = !!lock;
+            });
+
+            // Se travar, também ocultar o botão de edição do grupo (se existir) — opcional
+            const addMemberBtn = document.getElementById('add-member-btn');
+            if (addMemberBtn) addMemberBtn.disabled = false; // sempre permitir adicionar membros
+
+            const editGroupBtn = document.getElementById('edit-group-btn');
+            if (editGroupBtn) {
+                if (lock) {
+                    // Quando os campos estiverem travados, exibir o botão de editar
+                    editGroupBtn.classList.remove('hidden');
+                } else {
+                    editGroupBtn.classList.add('hidden');
+                }
+            }
         }
         
         function showViewPage() {
@@ -1149,15 +1206,27 @@
             };
             
             try {
-                // Salvar grupo no Supabase
-                const { data: group, error: groupError } = await supabase
-                    .from('groups')
-                    .insert([groupData])
-                    .select()
-                    .single();
-                
-                if (groupError) throw groupError;
-                
+                // Salvar ou atualizar grupo no Supabase
+                let group;
+                if (userGroup && userGroup.id) {
+                    const { data, error } = await supabase
+                        .from('groups')
+                        .update(groupData)
+                        .eq('id', userGroup.id)
+                        .select()
+                        .single();
+                    if (error) throw error;
+                    group = data;
+                } else {
+                    const { data, error } = await supabase
+                        .from('groups')
+                        .insert([groupData])
+                        .select()
+                        .single();
+                    if (error) throw error;
+                    group = data;
+                }
+
                 userGroup = group;
                 
                 // Salvar membros no Supabase
@@ -1180,9 +1249,13 @@
                 if (!membersFetchError && membersData) {
                     groupMembers = membersData;
                 }
-                
-                alert('Cadastro salvo com sucesso!');
-                showViewPage();
+
+                alert('Cadastro salvo com sucesso! Campos do grupo travados para edição.');
+                // Preencher e travar campos do grupo na página de registro
+                populateGroupFields();
+                lockGroupFields(true);
+                // Atualizar lista de membros
+                updateMembersList();
                 
             } catch (error) {
                 console.error('Erro ao salvar cadastro:', error);
