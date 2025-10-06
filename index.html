@@ -585,11 +585,12 @@
         const viewPage = document.getElementById('view-page');
         const connectionStatus = document.getElementById('connection-status');
         
-        // Variáveis de estado
-        let currentUser = null;
-        let userGroup = null;
-        let groupMembers = [];
-        let isEditing = false;
+    // Variáveis de estado
+    let currentUser = null;
+    let userGroup = null;
+    let groupMembers = [];
+    let deletedMemberIds = []; // ids marcados para remoção ao salvar
+    let isEditing = false;
         
         // Inicialização da aplicação
         document.addEventListener('DOMContentLoaded', async function() {
@@ -1007,20 +1008,10 @@
                 other_activities_details: document.getElementById('other-activities').value === 'sim' ? 
                     document.getElementById('other-activities-details').value : null
             };
-            
-            // Adicionar à lista de membros
+            // Apenas adicionar localmente; a persistência ocorrerá quando o grupo for salvo
             groupMembers.push(memberData);
-            
-            // Atualizar visualização
             updateMembersList();
-            
-            // Limpar formulário
             clearMemberForm();
-            
-            // Habilitar botão de salvar grupo se houver pelo menos um membro
-            if (groupMembers.length > 0) {
-                document.getElementById('save-group-btn').disabled = false;
-            }
         }
         
         // Validar formulário de membro
@@ -1116,15 +1107,22 @@
             document.querySelectorAll('.delete-member').forEach(button => {
                 button.addEventListener('click', function() {
                     const index = parseInt(this.getAttribute('data-index'));
-                    groupMembers.splice(index, 1);
-                    updateMembersList();
-                    
-                    // Desabilitar botão de salvar se não houver membros
+                    const member = groupMembers[index];
+                    // Se membro persistido no DB (possui id), marcar para remoção ao salvar
+                    if (member && member.id) {
+                        deletedMemberIds.push(member.id);
+                        groupMembers.splice(index, 1);
+                        updateMembersList();
+                    } else {
+                        groupMembers.splice(index, 1);
+                        updateMembersList();
+                    }
+
                     // (estado do botão agora é centralizado em updateMembersList())
                 });
             });
 
-            // Atualizar estado do botão de salvar cadastro do grupo: única regra = pelo menos 1 membro
+            // Atualizar estado do botão de salvar cadastro do grupo: única regra = pelo menos 1 membro local
             const saveGroupBtn = document.getElementById('save-group-btn');
             if (saveGroupBtn) {
                 saveGroupBtn.disabled = groupMembers.length === 0;
@@ -1163,16 +1161,25 @@
                 userGroup = group;
                 
                 // Salvar membros no Supabase
-                const membersWithGroupId = groupMembers.map(member => ({
-                    ...member,
-                    group_id: group.id
-                }));
-                
-                const { error: membersError } = await supabase
-                    .from('members')
-                    .insert(membersWithGroupId);
-                
-                if (membersError) throw membersError;
+                // Primeiro processar deleções marcadas (se houver)
+                if (deletedMemberIds.length > 0) {
+                    const { error: deleteError } = await supabase.from('members').delete().in('id', deletedMemberIds);
+                    if (deleteError) throw deleteError;
+                    deletedMemberIds = [];
+                }
+
+                // Upsert (inserir novos e atualizar existentes) todos os membros atuais associados ao grupo
+                const toUpsert = groupMembers.map(m => ({ ...m, group_id: group.id, user_id: currentUser.id }));
+                if (toUpsert.length > 0) {
+                    const { error: membersError } = await supabase.from('members').upsert(toUpsert);
+                    if (membersError) throw membersError;
+                }
+
+                // Recarregar membros do banco para garantir estado consistente
+                const { data: membersData, error: membersFetchError } = await supabase.from('members').select('*').eq('group_id', group.id);
+                if (!membersFetchError && membersData) {
+                    groupMembers = membersData;
+                }
                 
                 alert('Cadastro salvo com sucesso!');
                 showViewPage();
@@ -1296,7 +1303,8 @@
             // Atualizar estado do botão de salvar alterações: única regra = pelo menos 1 membro
             const saveChangesBtn = document.getElementById('save-changes-btn');
             if (isEditing) {
-                saveChangesBtn.disabled = groupMembers.length === 0;
+                const hasPersisted = groupMembers.some(m => m && m.id);
+                saveChangesBtn.disabled = !hasPersisted;
             }
         }
         
@@ -1382,15 +1390,19 @@
                 // Primeiro, excluir membros removidos
                 // Em uma implementação real, você precisaria comparar com os membros existentes no banco
                 
-                // Salvar/atualizar membros no banco
-                const { error: membersError } = await supabase
-                    .from('members')
-                    .upsert(groupMembers.map(member => ({
-                        ...member,
-                        group_id: userGroup.id
-                    })));
-                
-                if (membersError) throw membersError;
+                // Primeiro processar deleções marcadas (se houver)
+                if (deletedMemberIds.length > 0) {
+                    const { error: deleteError } = await supabase.from('members').delete().in('id', deletedMemberIds);
+                    if (deleteError) throw deleteError;
+                    deletedMemberIds = [];
+                }
+
+                // Upsert (inserir novos e atualizar existentes) todos os membros atuais associados ao grupo
+                const toUpsert = groupMembers.map(m => ({ ...m, group_id: userGroup.id, user_id: currentUser.id }));
+                if (toUpsert.length > 0) {
+                    const { error: membersError } = await supabase.from('members').upsert(toUpsert);
+                    if (membersError) throw membersError;
+                }
                 
                 alert('Alterações salvas com sucesso!');
                 isEditing = false;
