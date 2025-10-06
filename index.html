@@ -727,6 +727,10 @@
         function showLogoutModal() {
             const modal = document.getElementById('logout-modal');
             if (!modal) return;
+            // Não abrir o modal quando estivermos na página de login
+            const loginVisible = !loginPage.classList.contains('hidden');
+            if (loginVisible) return;
+
             modal.classList.remove('hidden');
             modal.setAttribute('aria-hidden', 'false');
             // Focus no botão de confirmar para acessibilidade
