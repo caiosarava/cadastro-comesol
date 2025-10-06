@@ -170,7 +170,7 @@
         .connection-status {
             position: fixed;
             top: 10px;
-            right: 10px;
+            right: 110px; /* leave space for logout button */
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 14px;
@@ -216,10 +216,81 @@
                 margin-top: 10px;
             }
         }
+
+        /* Modal de confirmação */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        /* Tooltip for disabled buttons */
+        .tooltip-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip-text {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            white-space: nowrap;
+            z-index: 2000;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* Show tooltip only when the button is disabled and the wrapper is hovered or the wrapper has .show-tooltip */
+        .tooltip-wrapper:hover button:disabled + .tooltip-text,
+        .tooltip-wrapper.show-tooltip button:disabled + .tooltip-text {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div id="connection-status" class="connection-status hidden"></div>
+    <button id="logout-btn" class="btn btn-danger hidden" style="position: fixed; top: 10px; right: 10px; z-index:1001;">Sair</button>
+
+    <!-- Modal de confirmação de logout -->
+    <div id="logout-modal" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
+            <h3 id="logout-modal-title">Confirmar saída</h3>
+            <p>Tem certeza que deseja sair da sua conta?</p>
+            <div class="modal-actions">
+                <button id="logout-cancel-btn" class="btn">Cancelar</button>
+                <button id="logout-confirm-btn" class="btn btn-danger">Sair</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Página de Login -->
     <div id="login-page" class="container">
@@ -546,6 +617,8 @@
             
             // Configurar event listeners
             setupEventListeners();
+            // Atualizar UI de autenticação (mostrar/esconder botão de logout)
+            updateAuthUI();
         });
         
         // Verificar conexão com o Supabase
@@ -577,6 +650,24 @@
             // Login
             document.getElementById('login-btn').addEventListener('click', handleLogin);
             document.getElementById('signup-link').addEventListener('click', handleSignup);
+
+            // Logout
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) logoutBtn.addEventListener('click', showLogoutModal);
+
+            // Modal buttons
+            const logoutCancel = document.getElementById('logout-cancel-btn');
+            const logoutConfirm = document.getElementById('logout-confirm-btn');
+            if (logoutCancel) logoutCancel.addEventListener('click', hideLogoutModal);
+            if (logoutConfirm) logoutConfirm.addEventListener('click', async () => {
+                hideLogoutModal();
+                await handleLogout();
+            });
+
+            // Close modal with Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') hideLogoutModal();
+            });
             
             // Cadastro do grupo
             document.getElementById('has-headquarters').addEventListener('change', toggleHeadquartersAddress);
@@ -590,11 +681,97 @@
             // Membros
             document.getElementById('add-member-btn').addEventListener('click', addMember);
             document.getElementById('save-group-btn').addEventListener('click', saveGroup);
+            // Adicionar tooltips aos botões de salvar
+            createTooltipForButton('save-group-btn', 'É necessário cadastrar pelo menos 1 membro para salvar o grupo');
             
             // Visualização/edição
             document.getElementById('edit-btn').addEventListener('click', enableEditing);
             document.getElementById('add-new-member-btn').addEventListener('click', addNewMember);
             document.getElementById('save-changes-btn').addEventListener('click', saveChanges);
+            createTooltipForButton('save-changes-btn', 'É necessário cadastrar pelo menos 1 membro para salvar as alterações');
+        }
+
+        // Atualiza a UI relacionada à autenticação (mostrar/esconder botão logout)
+        function updateAuthUI() {
+            const logoutBtn = document.getElementById('logout-btn');
+            if (!logoutBtn) return;
+
+            // Mostrar botão de logout somente quando houver usuário autenticado
+            if (currentUser) {
+                logoutBtn.classList.remove('hidden');
+            } else {
+                logoutBtn.classList.add('hidden');
+            }
+        }
+
+        // Realiza logout do Supabase e atualiza UI
+        async function handleLogout() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                currentUser = null;
+                userGroup = null;
+                groupMembers = [];
+                showLoginPage();
+                updateAuthUI();
+            } catch (err) {
+                console.error('Erro ao efetuar logout:', err);
+                alert('Erro ao sair. Tente novamente.');
+            }
+        }
+
+        // Mostrar/ocultar modal de logout
+        function showLogoutModal() {
+            const modal = document.getElementById('logout-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+            // Focus no botão de confirmar para acessibilidade
+            const confirmBtn = document.getElementById('logout-confirm-btn');
+            if (confirmBtn) confirmBtn.focus();
+        }
+
+        function hideLogoutModal() {
+            const modal = document.getElementById('logout-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            // Retornar foco para o botão de logout
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) logoutBtn.focus();
+        }
+
+        // Helper para criar um wrapper com tooltip para botões desabilitados
+        function createTooltipForButton(buttonId, tooltipText) {
+            const btn = document.getElementById(buttonId);
+            if (!btn) return;
+
+            // Evitar duplicação
+            if (btn.parentElement && btn.parentElement.classList.contains('tooltip-wrapper')) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tooltip-wrapper';
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip-text';
+            tooltip.textContent = tooltipText;
+
+            // Substituir o botão pelo wrapper contendo o botão
+            btn.parentElement.replaceChild(wrapper, btn);
+            wrapper.appendChild(btn);
+            wrapper.appendChild(tooltip);
+
+            // Mostrar tooltip quando o botão estiver desabilitado e o wrapper for focado (acessibilidade)
+            wrapper.addEventListener('focusin', () => {
+                if (btn.disabled) wrapper.classList.add('show-tooltip');
+            });
+            wrapper.addEventListener('focusout', () => wrapper.classList.remove('show-tooltip'));
+
+            // Atualizar a visibilidade caso o estado do botão mude programaticamente
+            const observer = new MutationObserver(() => {
+                if (btn.disabled) wrapper.classList.add('disabled'); else wrapper.classList.remove('disabled');
+            });
+            observer.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
         }
         
         // Funções de autenticação
@@ -694,6 +871,8 @@
             loginPage.classList.add('hidden');
             registerPage.classList.remove('hidden');
             viewPage.classList.add('hidden');
+            // Garantir que o estado do botão de salvar seja atualizado ao entrar na página de registro
+            updateMembersList();
         }
         
         function showViewPage() {
@@ -923,11 +1102,15 @@
                     updateMembersList();
                     
                     // Desabilitar botão de salvar se não houver membros
-                    if (groupMembers.length === 0) {
-                        document.getElementById('save-group-btn').disabled = true;
-                    }
+                    // (estado do botão agora é centralizado em updateMembersList())
                 });
             });
+
+            // Atualizar estado do botão de salvar cadastro do grupo: única regra = pelo menos 1 membro
+            const saveGroupBtn = document.getElementById('save-group-btn');
+            if (saveGroupBtn) {
+                saveGroupBtn.disabled = groupMembers.length === 0;
+            }
         }
         
         // Salvar grupo
@@ -1090,6 +1273,12 @@
                         renderMembers();
                     });
                 });
+            }
+
+            // Atualizar estado do botão de salvar alterações: única regra = pelo menos 1 membro
+            const saveChangesBtn = document.getElementById('save-changes-btn');
+            if (isEditing) {
+                saveChangesBtn.disabled = groupMembers.length === 0;
             }
         }
         
